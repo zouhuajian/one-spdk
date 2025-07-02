@@ -1,13 +1,10 @@
 #include <iostream>
-#include <cstring>
-#include <spdk/stdinc.h>
-#include <spdk/env.h>
-#include <spdk/log.h>
-#include <spdk/bdev.h>
-#include <spdk/bdev_module.h>
-#include <spdk/event.h>
-#include <spdk/thread.h>
-#include <spdk/util.h>
+#include "spdk/stdinc.h"
+#include "spdk/thread.h"
+#include "spdk/bdev.h"
+#include "spdk/env.h"
+#include "spdk/event.h"
+#include "spdk/string.h"
 
 constexpr const char* BDEV_NAME = "Malloc0";
 constexpr size_t BLOCK_SIZE = 4096;
@@ -48,31 +45,48 @@ void write_complete(struct spdk_bdev_io* bdev_io, bool success, void* ctx) {
 }
 
 void app_start(void*) {
-    // Step 1: Create Malloc Bdev
-    struct spdk_bdev* bdev = spdk_bdev_malloc_create(BLOCK_SIZE / 512, 512, nullptr, BDEV_NAME);
-    if (!bdev) {
-        std::cerr << "Failed to create malloc bdev" << std::endl;
-        spdk_app_stop(-1);
-        return;
-    }
+  // Step 1: 打开 bdev（spdk_bdev_open_ext 会内部查找名字）
+  if (spdk_bdev_open_ext(BDEV_NAME, true, nullptr, nullptr, &g_bdev_desc) != 0) {
+    std::cerr << "Failed to open bdev: " << BDEV_NAME << std::endl;
+    spdk_app_stop(-1);
+    return;
+  }
 
-    // Step 2: Open Bdev
-    if (spdk_bdev_open_ext(BDEV_NAME, true, nullptr, nullptr, &g_bdev_desc) != 0) {
-        std::cerr << "Failed to open bdev" << std::endl;
-        spdk_app_stop(-1);
-        return;
-    }
+  // Step 2: 获取 bdev 对象和 I/O 通道
+  g_bdev = spdk_bdev_desc_get_bdev(g_bdev_desc);
+  g_io_channel = spdk_bdev_get_io_channel(g_bdev_desc);
+  if (!g_io_channel) {
+    std::cerr << "Failed to get I/O channel" << std::endl;
+    spdk_bdev_close(g_bdev_desc);
+    spdk_app_stop(-1);
+    return;
+  }
 
-    g_bdev = spdk_bdev_desc_get_bdev(g_bdev_desc);
-    g_io_channel = spdk_bdev_get_io_channel(g_bdev_desc);
+  // Step 3: 写入数据
+  char* write_buf = static_cast<char*>(
+      spdk_zmalloc(BLOCK_SIZE, 0x1000, nullptr, SPDK_ENV_SOCKET_ID_ANY, SPDK_MALLOC_DMA));
+  if (!write_buf) {
+    std::cerr << "Failed to allocate write buffer" << std::endl;
+    spdk_put_io_channel(g_io_channel);
+    spdk_bdev_close(g_bdev_desc);
+    spdk_app_stop(-1);
+    return;
+  }
 
-    // Step 3: Write to Bdev
-    char* write_buf = static_cast<char*>(
-        spdk_zmalloc(BLOCK_SIZE, 0x1000, nullptr, SPDK_ENV_SOCKET_ID_ANY, SPDK_MALLOC_DMA));
-    strcpy(write_buf, "Hello SPDK World!");
+  strcpy(write_buf, "Hello SPDK World!");
 
-    spdk_bdev_write(g_bdev_desc, g_io_channel, write_buf, 0, BLOCK_SIZE, write_complete, write_buf);
+  int rc = spdk_bdev_write(g_bdev_desc, g_io_channel, write_buf, 0, BLOCK_SIZE,
+                           write_complete, write_buf);
+
+  if (rc != 0) {
+    std::cerr << "Write failed: " << spdk_strerror(-rc) << std::endl;
+    spdk_free(write_buf);
+    spdk_put_io_channel(g_io_channel);
+    spdk_bdev_close(g_bdev_desc);
+    spdk_app_stop(-1);
+  }
 }
+
 
 int main(int argc, char** argv) {
     spdk_app_opts opts = {};

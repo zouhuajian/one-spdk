@@ -1,47 +1,43 @@
-cmake_minimum_required(VERSION 3.29)
-project(one_cpp)
-
+cmake_minimum_required(VERSION 3.20)
+project(one_spdk)
+set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# SPDK 目录
-set(SPDK_DIR "~/data/projects/jay/spdk")
-set(SPDK_BUILD_DIR "${SPDK_DIR}/build")
+# SPDK 路径配置
+set(SPDK_DIR "/data/projects/jay/spdk")
+set(SPDK_INCLUDE_DIR "${SPDK_DIR}/include")
+set(SPDK_LIB_DIR "${SPDK_DIR}/build/lib")
+# DPDK 库路径（SPDK 内置的 DPDK 编译输出）
+set(DPDK_LIB_DIR "${SPDK_DIR}/dpdk/build/lib")
 
-# ✅ 包含头文件路径
-include_directories(
-        ${SPDK_DIR}/include
-)
+# ✅ 包含头文件
+include_directories(${SPDK_INCLUDE_DIR})
 
-# ✅ 链接库路径
-link_directories(
-        ${SPDK_DIR}/build/lib
-)
+# ✅ 自动查找所有 libspdk_*.a
+file(GLOB SPDK_STATIC_LIBS "${SPDK_LIB_DIR}/libspdk_*.a")
+# GLOB 所有 DPDK 静态库
+file(GLOB DPDK_STATIC_LIBS "${DPDK_LIB_DIR}/librte_*.a")
 
-# ✅ 生成可执行文件
-add_executable(rw_demo rw_demo.cpp)
 
-# ✅ 链接 SPDK 所需库（兼容 SPDK v25.09.0）
-target_link_libraries(rw_demo
-        spdk
-        spdk_env_dpdk
-        spdk_bdev
-        spdk_bdev_module
-        spdk_event
-        spdk_thread
-        spdk_log
-        spdk_util
-        spdk_json
-        spdk_jsonrpc
-        spdk_conf
-        spdk_app
-        spdk_rpc
-        spdk_sock
-        spdk_nvme
-        spdk_malloc
-        spdk_bdev_malloc
-        spdk_trace_parser
+# ✅ 添加可执行文件
+add_executable(hello_bdev hello_bdev.cpp)
+
+# ✅ 显式指定库目录（可选）
+link_directories(${SPDK_LIB_DIR})
+
+# ✅ 链接 SPDK + 系统库
+target_link_libraries(hello_bdev
+        -Wl,--start-group
+        ${DPDK_STATIC_LIBS}
+        ${SPDK_STATIC_LIBS}
+        -Wl,--end-group
+
         pthread
+        uuid
         rt
         dl
         numa
+        ssl
+        crypto
 )

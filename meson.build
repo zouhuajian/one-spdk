@@ -73,7 +73,6 @@ dpdk_dep = dependency('libdpdk', required : true)
 openssl_dep = dependency('openssl', required : true)
 uuid_lib_dep = dependency('uuid', required : true)
 
-
 # ✅ 可执行程序
 executable('hello_bdev',
            'hello_bdev.c',

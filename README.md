@@ -4,14 +4,12 @@ sudo HUGEMEM=1024 $SPDK_DIR/scripts/setup.sh
 
 # export SPDK_DIR=/your/path/to/spdk
 
-rm -rf build && mkdir build && cd build && cmake .. && make -j
+rm -rf build && mkdir build && cd build && cmake .. && make -j$(nproc)
 
-sudo ./hello_bdev -c malloc_bdev.json
+sudo ./hello_bdev -c ../bdev.json
+  
+  
+rm -rf buildDir && meson setup buildDir && ninja -C buildDir 
 
-sudo ./hello_bdev -c malloc_bdev.json \
-  --log-level=spdk:6 \
-  --log-level=lib.bdev:6 \
-  --log-level=lib.event:6 \
-  --log-level=lib.thread:6 \
-  --log-level=user1:6sudo ./rw_demo -c ../malloc_bdev.json -L user1
+sudo ./buildDir/hello_bdev -c ../bdev.json
 ```

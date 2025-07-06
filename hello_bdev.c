@@ -298,10 +298,6 @@ main(int argc, char **argv)
 	}
 	hello_context.bdev_name = g_bdev_name;
 
-	spdk_log_set_level(SPDK_LOG_DEBUG);
-	spdk_log_set_flag("reactor");
-	spdk_log_set_flag("app");
-	spdk_log_set_flag("memory");  // 有时内存分配问题与此模块有关
 	/*
 	 * spdk_app_start() will initialize the SPDK framework, call hello_start(),
 	 * and then block until spdk_app_stop() is called (or if an initialization

@@ -11,5 +11,5 @@ sudo ./hello_bdev -c ../bdev.json
   
 rm -rf buildDir && meson setup buildDir && ninja -C buildDir 
 
-sudo ./buildDir/hello_bdev -c ../bdev.json
+sudo ./buildDir/hello_bdev -c bdev.json
 ```

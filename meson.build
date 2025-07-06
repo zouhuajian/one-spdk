@@ -75,7 +75,7 @@ uuid_lib_dep = dependency('uuid', required : true)
 
 # ✅ 可执行程序
 executable('hello_bdev',
-           'hello_bdev.c',
+           'hello_bdev.cpp',
            dependencies : spdk_deps + [dpdk_dep, openssl_dep, uuid_lib_dep],
            link_args : ['-Wl,--no-as-needed'],  # 显式加上链接参数
            install : false,
